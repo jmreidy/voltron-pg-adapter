@@ -1,0 +1,30 @@
+{
+  "name": "voltron-postgres-adapter",
+  "version": "0.1.0",
+  "description": "Node.js POstgres adapter, a Voltron.io component",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "node-sql": "git://github.com/jmreidy/node-sql.git",
+    "pg": "~0.12.1",
+    "q":"~0.8.11"
+  },
+  "devDependencies": {
+    "mocha": "~1.4.0",
+    "sinon": "~1.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmreidy/voltron-pg-adapter"
+  },
+  "keywords": [
+    "voltron.io",
+    "postgres",
+    "sql"
+  ],
+  "author": "Justin Reidy <jmreidy@rzrsharp.net>",
+  "license": "MIT",
+  "private": true
+}
