@@ -1,13 +1,13 @@
 {
   "name": "voltron-postgres-adapter",
-  "version": "0.1.0",
+  "version": "0.1.9",
   "description": "Node.js POstgres adapter, a Voltron.io component",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "node-sql": "git://github.com/jmreidy/node-sql.git",
+    "node-sql": "git://github.com/jmreidy/node-sql.git#development",
     "pg": "~0.12.1",
     "q":"~0.8.11"
   },

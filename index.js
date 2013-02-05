@@ -64,7 +64,7 @@ PostgresAdapter.decorate = function (Model, options) {
     var values = function (model) {
       return options.valueFn.call(model);
     };
-    Model.prototype.save = function () {
+    Model.prototype.save = function (client) {
       var query;
       if (this.id) {
         query = relation
@@ -77,18 +77,18 @@ PostgresAdapter.decorate = function (Model, options) {
           .insert(values(this))
           .returning(pk);
       }
-      return adapter.executeQuery(query)
+      return adapter.executeQuery(query, client)
         .then(function (result) {
           if (pk && result.rows && result.rows.length > 0) {
             return result.rows[0][pk];
           }
         });
     };
-    Model.prototype.del = function () {
+    Model.prototype.del = function (client) {
       var query = relation
         .delete()
         .where(relation[pk].equals(this.id));
-      return adapter.executeQuery(query);
+      return adapter.executeQuery(query, client);
     };
   }
 
@@ -136,47 +136,45 @@ PostgresAdapter.prototype = Object.create(Object, {
           });
       }
       else {
-        if (query.toQuery) {
-          query = query.toQuery();
-        }
-        else if (typeof query === 'string') {
-          query = {text: query};
-        }
-        var values = this.parseValues(query.values);
+        query = prepareQuery(query);
         return Q.ninvoke(client, 'query', query.text, query.values);
       }
       return promise;
     }
   },
 
-  /**
-   * Clean query parameters for safe querying.
-   */
-  parseValues: {
-    value: function (values) {
-      if (!values) {
-        return [];
+  batchQuery: {
+    value: function (queries, client) {
+      var promise;
+      var self = this;
+      if (!queries || queries.length < 1) {
+        return Q.when(function () {
+          new Error('batchQuery must be supplied with queries');
+        });
       }
-      return values.map(function (val) {
-        if (Array.isArray(val)) {
-          val = val.map(function (item) {
-            if (Array.isArray(item)) {
-              return parseValues(item);
-            }
-            else {
-              if (item.replace) {
-                item = item.replace(/,/g,'\\,');
-                item = item.replace(/\"/g,'\\"');
-              }
-              return item;
-            }
+
+      if (!client) {
+        promise = self.retrieveClient(this.config)
+          .then(function (client) {
+            return self.executeQuery(query, client);
           });
-          val = '{' + val.join(',') + '}';
-        }
-        return val;
-      });
+      }
+      else {
+        var text = '';
+        queries.forEach(function (query, idx) {
+          query = prepareQuery(query);
+          if (idx < queries.length - 1) {
+            client.query(query.text, query.values);
+          }
+          else {
+            promise = Q.ninvoke(client, 'query', query.text, query.values);
+          }
+        });
+      }
+      return promise;
     }
   },
+
 
   /**
    * Create a new transaction and pass it a client.
@@ -197,3 +195,41 @@ PostgresAdapter.prototype = Object.create(Object, {
 });
 
 
+//PRIVATE
+function prepareQuery (query) {
+  if (!query) {
+    query = {};
+  }
+  else if (query.toQuery) {
+    query = query.toQuery();
+  }
+  else if (typeof query === 'string') {
+    query = {text: query, values: []};
+  }
+  query.values = parseValues(query.values);
+  return query;
+}
+
+function parseValues (values) {
+  if (!values) {
+    return [];
+  }
+  return values.map(function (val) {
+    if (Array.isArray(val)) {
+      val = val.map(function (item) {
+        if (Array.isArray(item)) {
+          return parseValues(item);
+        }
+        else {
+          if (item.replace) {
+            item = item.replace(/,/g,'\\,');
+            item = item.replace(/\"/g,'\\"');
+          }
+          return item;
+        }
+      });
+      val = '{' + val.join(',') + '}';
+    }
+    return val;
+  });
+}
