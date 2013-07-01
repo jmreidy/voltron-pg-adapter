@@ -25,6 +25,5 @@
     "sql"
   ],
   "author": "Justin Reidy <jmreidy@rzrsharp.net>",
-  "license": "MIT",
-  "private": true
+  "license": "MIT"
 }
