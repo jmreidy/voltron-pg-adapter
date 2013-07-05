@@ -66,21 +66,29 @@ PostgresAdapter.decorate = function (Model, options) {
     };
     Model.prototype.save = function (client) {
       var query;
-      if (this.id) {
+      var model = this;
+      if (model.id) {
         query = relation
-          .update(values(this))
-          .where(relation[pk].equals(this.id))
+          .update(values(model))
+          .where(relation[pk].equals(model.id))
           .returning(pk);
       }
       else {
         query = relation
-          .insert(values(this))
+          .insert(values(model))
           .returning(pk);
       }
       return adapter.executeQuery(query, client)
         .then(function (result) {
           if (pk && result.rows && result.rows.length > 0) {
-            return result.rows[0][pk];
+            var id = result.rows[0][pk];
+            if (model.updateId) {
+              model.updateId(id);
+              return model;
+            }
+            else {
+              return id;
+            }
           }
         });
     };
