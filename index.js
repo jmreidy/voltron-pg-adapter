@@ -104,7 +104,7 @@ PostgresAdapter.decorate = function (Model, options) {
 };
 
 
-PostgresAdapter.prototype = Object.create(Object, {
+PostgresAdapter.prototype = Object.create({}, {
   constructor: PostgresAdapter,
 
   config: {
