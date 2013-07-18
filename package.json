@@ -4,16 +4,19 @@
   "description": "Node.js POstgres adapter, a Voltron.io component",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "dependencies": {
     "sql": "git://github.com/jmreidy/node-sql.git#development",
-    "pg": "~0.12.1",
-    "q": "~0.8.11"
+    "pg": "~2.2.0",
+    "q": "~0.9.0"
   },
   "devDependencies": {
-    "mocha": "~1.4.0",
-    "sinon": "~1.4.0"
+    "mocha": "~1.12.0",
+    "sinon": "~1.7.0",
+    "chai": "~1.7.2",
+    "chai-as-promised": "~3.3.1",
+    "sinon-chai": "~2.4.0"
   },
   "repository": {
     "type": "git",

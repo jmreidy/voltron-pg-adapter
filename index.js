@@ -5,13 +5,14 @@ var Transaction = require('./lib/transaction');
 
 module.exports = PostgresAdapter;
 
-
 function PostgresAdapter(tableName, fields) {
   this.tableName = tableName;
-  this.relation = sql.define({
-    name: tableName,
-    columns: fields
-  });
+  if (fields) {
+    this.relation = sql.define({
+      name: tableName,
+      columns: fields
+    });
+  }
 }
 
 
@@ -129,25 +130,25 @@ PostgresAdapter.prototype = Object.create({}, {
    */
   executeQuery: {
     value: function (query, client) {
-      var promise;
+      var token = Q.defer();
       var self = this;
-      if (!query) {
-        return Q.when(function () {
-          new Error('executeQuery must be supplied with a query');
-        });
+
+      _validateQuery(query, token);
+
+      if (!token.rejected) {
+        if (!client) {
+          self.retrieveClient(this.config)
+            .then(function (client) {
+              token.resolve(self.executeQuery(query, client));
+            });
+        }
+        else {
+          query = _prepareQuery(query);
+          token.resolve(Q.ninvoke(client, 'query', query.text, query.values));
+        }
       }
 
-      if (!client) {
-        promise = self.retrieveClient(this.config)
-          .then(function (client) {
-            return self.executeQuery(query, client);
-          });
-      }
-      else {
-        query = prepareQuery(query);
-        return Q.ninvoke(client, 'query', query.text, query.values);
-      }
-      return promise;
+      return token.promise;
     }
   },
 
@@ -170,7 +171,7 @@ PostgresAdapter.prototype = Object.create({}, {
       else {
         var text = '';
         queries.forEach(function (query, idx) {
-          query = prepareQuery(query);
+          query = _prepareQuery(query);
           if (idx < queries.length - 1) {
             client.query(query.text, query.values);
           }
@@ -203,22 +204,18 @@ PostgresAdapter.prototype = Object.create({}, {
 });
 
 
-//PRIVATE
-function prepareQuery (query) {
-  if (!query) {
-    query = {};
-  }
-  else if (query.toQuery) {
+function _prepareQuery (query) {
+  if (query.toQuery) {
     query = query.toQuery();
   }
   else if (typeof query === 'string') {
     query = {text: query, values: []};
   }
-  query.values = parseValues(query.values);
+  query.values = _parseValues(query.values);
   return query;
 }
 
-function parseValues (values) {
+function _parseValues (values) {
   if (!values) {
     return [];
   }
@@ -240,4 +237,18 @@ function parseValues (values) {
     }
     return val;
   });
+}
+
+function _validateQuery (query, token) {
+  if (!query) {
+    token.reject(new Error('executeQuery must be supplied with a query'));
+    return;
+  }
+
+  if (typeof query !== 'string' && !query.toQuery) {
+    if (!query.text) {
+      token.reject(new Error('query.text must be specified'));
+    }
+  }
+
 }
