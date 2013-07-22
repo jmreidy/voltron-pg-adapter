@@ -135,7 +135,7 @@ PostgresAdapter.prototype = Object.create({}, {
 
       _validateQuery(query, token);
 
-      if (!token.rejected) {
+      if (!token.promise.isRejected()) {
         if (!client) {
           self.retrieveClient(this.config)
             .then(function (client) {
@@ -149,39 +149,41 @@ PostgresAdapter.prototype = Object.create({}, {
       }
 
       return token.promise;
-    }
+    }, writable: true
   },
 
   batchQuery: {
     value: function (queries, client) {
-      var promise;
+      var token = Q.defer();
       var self = this;
-      if (!queries || queries.length < 1) {
-        return Q.when(function () {
-          new Error('batchQuery must be supplied with queries');
-        });
+
+      if (!queries || !queries.length) {
+        token.reject(new Error('batchQuery must be supplied with an array of queries'));
       }
 
-      if (!client) {
-        promise = self.retrieveClient(this.config)
-          .then(function (client) {
-            return self.executeQuery(query, client);
+      if (!token.promise.isRejected()) {
+        if (!client) {
+          self.retrieveClient(this.config)
+            .then(function (client) {
+              token.resolve(self.executeQuery(query, client));
+            });
+        }
+        else {
+          var text = '';
+          queries.forEach(function (query, idx) {
+            query = _prepareQuery(query);
+            if (idx < queries.length - 1) {
+              client.query(query.text, query.values);
+            }
+            else {
+              token.resolve(Q.ninvoke(client, 'query', query.text, query.values));
+            }
           });
+        }
       }
-      else {
-        var text = '';
-        queries.forEach(function (query, idx) {
-          query = _prepareQuery(query);
-          if (idx < queries.length - 1) {
-            client.query(query.text, query.values);
-          }
-          else {
-            promise = Q.ninvoke(client, 'query', query.text, query.values);
-          }
-        });
-      }
-      return promise;
-    }
+      return token.promise;
+
+    }, writable: true
   },
 
 
@@ -193,7 +195,7 @@ PostgresAdapter.prototype = Object.create({}, {
   startTransaction: {
     value: function () {
       return new Transaction(this);
-    }
+    }, writable: true
   },
 
   retrieveClient: {

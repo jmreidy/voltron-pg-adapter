@@ -1,17 +1,31 @@
 var PostgresAdapter = require('../');
 
 describe('voltron-postgres-adapter', function () {
+  var adapter;
+  var dbResult;
+  var stubClient;
+
+  beforeEach(function () {
+    adapter = new PostgresAdapter();
+    dbResult = {rows: []};
+    stubClient = {
+      query: function (query, values, cb) {
+        cb(null, dbResult);
+      }
+    };
+    Sinon.spy(stubClient, 'query');
+  });
 
   describe('creating a new adapter instance', function () {
 
     it('defines the table name on the adapter', function () {
-      var adapter = new PostgresAdapter('fakeTable');
+      adapter = new PostgresAdapter('fakeTable');
       expect(adapter.tableName).to.equal('fakeTable');
     });
 
     context('if field names are passed', function () {
       it('defines a node-sql table', function () {
-        var adapter = new PostgresAdapter('users', ['name', 'address']);
+        adapter = new PostgresAdapter('users', ['name', 'address']);
         expect(adapter.relation.name).to.exist;
         expect(adapter.relation.address).to.exist;
         expect(adapter.relation.select).to.exist;
@@ -33,25 +47,18 @@ describe('voltron-postgres-adapter', function () {
     });
   });
 
-  describe('executeQuery', function () {
-    var adapter;
-    var dbResult;
-    var stubClient;
-
-    beforeEach(function () {
-      adapter = new PostgresAdapter();
-      dbResult = {rows: []};
-      stubClient = {
-        query: function (query, values, cb) {
-          cb(null, dbResult);
-        }
-      };
-      Sinon.spy(stubClient, 'query');
-    });
-
-
+  describe('#executeQuery', function () {
     it('throws an error if a query is not provided', function (done) {
-      expect(adapter.executeQuery()).to.be.rejected.with('executeQuery must be supplied with a query').and.notify(done);
+      Sinon.spy(adapter, 'retrieveClient');
+      adapter.executeQuery()
+        .then(
+          function () { throw new Error('should not resolve');},
+          function (err) {
+            expect(err.message).to.equal('executeQuery must be supplied with a query');
+            expect(adapter.retrieveClient).to.not.have.been.called;
+            expect(stubClient.query).to.not.have.been.called;
+          })
+        .nodeify(done);
     });
 
     context('for node-sql queries', function () {
@@ -76,10 +83,11 @@ describe('voltron-postgres-adapter', function () {
       itQueriesTheDatabase({text: 'SELECT $1 from test', values: ['foo']});
 
       it('throws an error if a query object is provided without text', function (done) {
+        var error = 'query.text must be specified';
         Q.all([
-          expect(adapter.executeQuery({})).to.be.rejected.with('query.text must be specified'),
-          expect(adapter.executeQuery({text: null})).to.be.rejected.with('query.text must be specified'),
-          expect(adapter.executeQuery({text: ''})).to.be.rejected.with('query.text must be specified')
+          expect(adapter.executeQuery({})).to.be.rejected.with(error),
+          expect(adapter.executeQuery({text: null})).to.be.rejected.with(error),
+          expect(adapter.executeQuery({text: ''})).to.be.rejected.with(error)
         ]).nodeify(done);
       });
     });
@@ -142,7 +150,47 @@ describe('voltron-postgres-adapter', function () {
       });
     }
 
+
+
   });
+
+  describe('#batchQuery', function () {
+    context('if queries are not provided', function () {
+      it('throws an error', function (done) {
+        var error = 'batchQuery must be supplied with an array of queries';
+        Q.all([
+          expect(adapter.batchQuery()).to.be.rejected.with(error),
+          expect(adapter.batchQuery([])).to.be.rejected.with(error),
+          expect(adapter.batchQuery({})).to.be.rejected.with(error)
+        ]).nodeify(done);
+      });
+
+      it('doesn\'t execute any queries', function (done) {
+        Sinon.spy(adapter, 'retrieveClient');
+        adapter.batchQuery()
+          .then(
+            function () { throw new Error('should not resolve');},
+            function (err) {
+              expect(adapter.retrieveClient).to.not.have.been.called;
+              expect(stubClient.query).to.not.have.been.called;
+            })
+          .nodeify(done);
+      });
+
+
+    });
+
+    it('uses the supplied client');
+
+    it('gets a client if none is provided');
+
+    it('queues all queries in the batch');
+  });
+
+  describe('#startTransaction', function () {
+    it('creates a new Transaction');
+  });
+
 
 
   describe('::configure', function () {
@@ -155,6 +203,16 @@ describe('voltron-postgres-adapter', function () {
     });
 
   });
+
+  function itParsesQueryArrays (query) {
+    it('parses array values in the query');
+    it('parses nested array values in the query');
+  }
+
+  function itEscapesQueryValues (query) {
+    it('escapes commas in the query');
+    it('escapes double quotes in the query');
+  }
 
 
 });
