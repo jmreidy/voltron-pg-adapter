@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/jmreidy/voltron-pg-adapter.png)](https://travis-ci.org/jmreidy/voltron-pg-adapter)
 voltron-pg-adapter
 ==================
 
