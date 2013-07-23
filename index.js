@@ -165,7 +165,7 @@ PostgresAdapter.prototype = Object.create({}, {
         if (!client) {
           self.retrieveClient(this.config)
             .then(function (client) {
-              token.resolve(self.executeQuery(query, client));
+              token.resolve(self.batchQuery(queries, client));
             });
         }
         else {

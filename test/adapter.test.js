@@ -1,4 +1,5 @@
 var PostgresAdapter = require('../');
+var Transaction = require('../lib/transaction');
 
 describe('voltron-postgres-adapter', function () {
   var adapter;
@@ -10,7 +11,9 @@ describe('voltron-postgres-adapter', function () {
     dbResult = {rows: []};
     stubClient = {
       query: function (query, values, cb) {
-        cb(null, dbResult);
+        if (cb) {
+          cb(null, dbResult);
+        }
       }
     };
     Sinon.spy(stubClient, 'query');
@@ -112,7 +115,6 @@ describe('voltron-postgres-adapter', function () {
       adapter.executeQuery('SELECT').then(function () {
         expect(adapter.retrieveClient).to.have.been.calledOnce;
         expect(stubClient.query).to.have.been.calledWith('SELECT');
-        adapter.retrieveClient.restore();
       })
       .nodeify(done);
     });
@@ -180,15 +182,50 @@ describe('voltron-postgres-adapter', function () {
 
     });
 
-    it('uses the supplied client');
+    it('uses the supplied client', function (done) {
+      expect(adapter.batchQuery(['SELECT'], stubClient)).to.be.fulfilled
+        .then(function () {
+          expect(stubClient.query).to.have.been.calledOnce;
+          expect(stubClient.query).to.have.been.calledWith('SELECT');
+        })
+        .nodeify(done);
+    });
 
-    it('gets a client if none is provided');
 
-    it('queues all queries in the batch');
+    it('gets a client if none is provided', function (done) {
+      Sinon.stub(adapter, 'retrieveClient').returns(Q.when(stubClient));
+      adapter.batchQuery(['SELECT']).then(function () {
+        expect(adapter.retrieveClient).to.have.been.calledOnce;
+        expect(stubClient.query).to.have.been.calledWith('SELECT');
+      })
+      .nodeify(done);
+    });
+
+    it('returns a promise that is resolved with the query result', function (done) {
+      adapter.batchQuery(['SELECT'], stubClient).then(function (result) {
+        expect(result).to.deep.equal(dbResult);
+      })
+      .nodeify(done);
+    });
+
+    it('queues all queries in the batch', function (done) {
+      var queryA = {text: 'SELECT A', values: [1]};
+      var queryB = {text: 'SELECT B', values: [2]};
+      adapter.batchQuery([queryA, queryB], stubClient).then(function () {
+        expect(stubClient.query).to.have.been.calledTwice;
+        expect(stubClient.query).to.have.been.calledWith(queryA.text, queryA.values);
+        expect(stubClient.query).to.have.been.calledWith(queryB.text, queryB.values);
+      })
+      .nodeify(done);
+
+    });
   });
 
   describe('#startTransaction', function () {
-    it('creates a new Transaction');
+    it('creates a new Transaction', function () {
+      var transaction = adapter.startTransaction();
+      expect(transaction).to.be.an.instanceOf(Transaction);
+    });
   });
 
 
