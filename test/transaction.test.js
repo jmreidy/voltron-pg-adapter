@@ -27,7 +27,7 @@ describe('Transactions', function () {
     var promise;
 
     beforeEach(function () {
-      promise = transaction.execute()
+      promise = transaction.begin()
     });
 
     it('retrieves a client from the pool', function (done) {
