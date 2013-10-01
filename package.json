@@ -7,12 +7,12 @@
     "test": "mocha"
   },
   "dependencies": {
-    "sql": "git://github.com/jmreidy/node-sql.git#development",
+    "sql": "~0.28.0",
     "pg": "~2.2.0",
-    "q": "~0.9.0"
+    "q": "~0.9.7"
   },
   "devDependencies": {
-    "mocha": "~1.12.0",
+    "mocha": "~1.13",
     "sinon": "~1.7.0",
     "chai": "~1.7.2",
     "chai-as-promised": "~3.3.1",
